@@ -30,7 +30,7 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
     char* column_names[256]; // column names
     int column_count = 0; // column count
     int is_first_line = 1; // check if first line
-    
+
     pIn = fopen(csv_file_path, "r");
     if (pIn == NULL) {
         printf("Error opening file: %s\n", csv_file_path);
@@ -109,7 +109,7 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
                 fwrite(&value, sizeof(float), 1, pOut);
             } else {// int
                 int value = atoi(token);
-                fwrite(&value, sizeof(int), 1, pOut);
+                fwrite(&value, sizeof(int),  1, pOut);
             }
             token = strtok(NULL, ",");
         }
@@ -125,6 +125,10 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
 
     // Cleanup
     cJSON_Delete(metadata);
+    free(metadata_str);
+    for (int i = 0; i < num_columns; i++) {
+        free(column_names[i]);
+    }
     fclose(pOut);
     fclose(pIn);
 }
