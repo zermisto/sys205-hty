@@ -30,6 +30,12 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
     char* column_names[256]; // column names
     int column_count = 0; // column count
     int is_first_line = 1; // check if first line
+    
+    pIn = fopen(csv_file_path, "r");
+    if (pIn == NULL) {
+        printf("Error opening file: %s\n", csv_file_path);
+        exit(1);
+    }
 
     // Task: 1.1 Read CSV file and prepare metadata
     while (fgets(inputline, sizeof(inputline), pIn) != NULL) {
@@ -135,11 +141,6 @@ int main() {
     printf("Please enter the .hty file path: ");
     fgets(inputline, sizeof(inputline), stdin);
     sscanf(inputline, "%s", hty_file_path);
-    pIn = fopen(csv_file_path, "r");
-    if (pIn == NULL) {
-        printf("Error opening file: %s\n", csv_file_path);
-        exit(1);
-    }
     convert_from_csv_to_hty(pIn, pOut, csv_file_path, hty_file_path); //Task 1
     return 0;
 }

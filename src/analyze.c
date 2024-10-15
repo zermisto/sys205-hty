@@ -22,27 +22,29 @@ typedef cJSON* json_t; // Define json_t as cJSON pointer
  * @return json_t - metadata JSON object
  */
 json_t extract_metadata(const char* hty_file_path) {
-    FILE* file = fopen(hty_file_path, "rb");
-    if (!file) {
-        fprintf(stderr, "Error opening file: %s\n", hty_file_path);
+    // Open HTY file
+    FILE* pFile = fopen(hty_file_path, "rb");
+    if (pFile == NULL) {
+        printf("Error opening file: %s\n", hty_file_path);
         return NULL;
     }
 
+    //TODO study    
     // Seek to the last 4 bytes to read the metadata size
-    fseek(file, -4, SEEK_END);
+    fseek(pFile, -4, SEEK_END);
     int metadata_size;
-    fread(&metadata_size, sizeof(metadata_size), 1, file);
+    fread(&metadata_size, sizeof(metadata_size), 1, pFile);
 
     // Seek to the beginning of the metadata section
-    fseek(file, -metadata_size - 4, SEEK_END);
+    fseek(pFile, -metadata_size - 4, SEEK_END);
     char* metadata_buffer = (char*)malloc(metadata_size);
-    fread(metadata_buffer, 1, metadata_size, file);
+    fread(metadata_buffer, 1, metadata_size, pFile);
 
     // Parse the metadata JSON
     json_t metadata = cJSON_Parse(metadata_buffer);
 
     free(metadata_buffer);
-    fclose(file);
+    fclose(pFile);
     return metadata;
 }
 
@@ -53,10 +55,9 @@ json_t extract_metadata(const char* hty_file_path) {
  */
 void print_json(json_t json) {
     char* json_string = cJSON_Print(json);
-    if (json_string) {
-        printf("%s\n", json_string);
-        free(json_string);
-    }
+
+    printf("%s\n", json_string);
+    cJSON_free(json_string); 
 }
 
 int* project_single_column(json_t metadata, const char* hty_file_path, const char* projected_column, int* size);
