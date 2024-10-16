@@ -21,6 +21,7 @@ void add_row(cJSON* metadata, const char* hty_file_path, const char* modified_ht
 
 // Implementation of extract_metadata function
 cJSON* extract_metadata(const char* hty_file_path) {
+    // Open the data.hty file
     FILE* file = fopen(hty_file_path, "rb");
     if (file == NULL) {
         fprintf(stderr, "Error opening file: %s\n", hty_file_path);
@@ -55,27 +56,28 @@ cJSON* extract_metadata(const char* hty_file_path) {
     return metadata;
 }
 
+// Implementation of extract_metadata function
 int* project_single_column(cJSON* metadata, const char* hty_file_path, const char* projected_column, int* size) {
     // Find the column in metadata
-    cJSON* groups = cJSON_GetObjectItemCaseSensitive(metadata, "groups");
+    cJSON* groups = cJSON_GetObjectItemCaseSensitive(metadata, "groups"); // Get groups array
     cJSON* group = cJSON_GetArrayItem(groups, 0);  // Assuming single group
-    cJSON* columns = cJSON_GetObjectItemCaseSensitive(group, "columns");
+    cJSON* columns = cJSON_GetObjectItemCaseSensitive(group, "columns"); // Get columns array
     
-    int column_index = -1;
+    int column_index = -1; // Column index
     int column_type = -1;  // 0 for int, 1 for float
-    int num_rows = cJSON_GetObjectItemCaseSensitive(metadata, "num_rows")->valueint;
-    int offset = cJSON_GetObjectItemCaseSensitive(group, "offset")->valueint;
+    int num_rows = cJSON_GetObjectItemCaseSensitive(metadata, "num_rows")->valueint; // Get number of rows
+    int offset = cJSON_GetObjectItemCaseSensitive(group, "offset")->valueint; // Get offset
     
-    cJSON* column;
-    cJSON_ArrayForEach(column, columns) {
+    cJSON* column; // Column object
+    cJSON_ArrayForEach(column, columns) { // Iterate over columns to get column type
         column_index++;
         if (strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_name")->valuestring, projected_column) == 0) {
             column_type = strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_type")->valuestring, "float") == 0 ? 1 : 0;
-            break;
+            break; //got column type!
         }
     }
     
-    if (column_index == -1) {
+    if (column_index == -1) { // If column not found, return
         fprintf(stderr, "Column not found: %s\n", projected_column);
         return NULL;
     }
@@ -87,12 +89,12 @@ int* project_single_column(cJSON* metadata, const char* hty_file_path, const cha
         return NULL;
     }
     
-    fseek(file, offset, SEEK_SET);
+    fseek(file, offset, SEEK_SET); // Set file pointer to offset
     
-    int* result = (int*)malloc(num_rows * sizeof(int));
+    int* result = (int*)malloc(num_rows * sizeof(int)); // Allocate memory for result
     *size = num_rows;
     
-    for (int i = 0; i < num_rows; i++) {
+    for (int i = 0; i < num_rows; i++) { // Iterate over rows to read data
         for (int j = 0; j < column_index; j++) {
             fseek(file, sizeof(int), SEEK_CUR);  // Skip other columns
         }
@@ -102,33 +104,39 @@ int* project_single_column(cJSON* metadata, const char* hty_file_path, const cha
         } else {  // float
             float temp;
             fread(&temp, sizeof(float), 1, file);
-            result[i] = *(int*)&temp;  // Reinterpret float as int
+            result[i] = *(int*)&temp;  // Reinterpret float as int since we store data as int array
         }
         
         // Skip to the next row
         fseek(file, (cJSON_GetArraySize(columns) - column_index - 1) * sizeof(int), SEEK_CUR);
     }
-    
     fclose(file);
     return result;
 }
 
+/**
+ * @brief Function to display a column
+ * 
+ * @param metadata - metadata object
+ * @param column_name - column name
+ * @param data - column data
+ * @param size - size of the column
+ */
 void display_column(cJSON* metadata, const char* column_name, int* data, int size) {
     // Find the column type in metadata
-    cJSON* groups = cJSON_GetObjectItemCaseSensitive(metadata, "groups");
+    cJSON* groups = cJSON_GetObjectItemCaseSensitive(metadata, "groups"); // Get groups array
     cJSON* group = cJSON_GetArrayItem(groups, 0);  // Assuming single group
-    cJSON* columns = cJSON_GetObjectItemCaseSensitive(group, "columns");
-    
+    cJSON* columns = cJSON_GetObjectItemCaseSensitive(group, "columns"); // Get columns array
+
     int column_type = -1;  // 0 for int, 1 for float
-    
-    cJSON* column;
-    cJSON_ArrayForEach(column, columns) {
+    cJSON* column; // Column object
+    cJSON_ArrayForEach(column, columns) { // Iterate over columns to get column type
         if (strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_name")->valuestring, column_name) == 0) {
-            column_type = strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_type")->valuestring, "float") == 0 ? 1 : 0;
+            column_type = strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_type")->valuestring, "float") == 0 ? 1 : 0; //got column type!
             break;
         }
     }
-    
+    // If column not found, return
     if (column_type == -1) {
         fprintf(stderr, "Column not found: %s\n", column_name);
         return;
@@ -142,7 +150,7 @@ void display_column(cJSON* metadata, const char* column_name, int* data, int siz
         if (column_type == 0) {  // int
             printf("%d\n", data[i]);
         } else {  // float
-            printf("%f\n", *(float*)&data[i]);  // Reinterpret int as float
+            printf("%.1f\n", *(float*)&data[i]); // Reinterpret int as float since we store data as int array
         }
     }
 }
