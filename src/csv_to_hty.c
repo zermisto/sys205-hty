@@ -22,6 +22,25 @@
  * @param hty_file_path - path to data.hty
  */
 void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* hty_file_path) {
+    char inputline[256]; // user buffer
+    int num_rows = 0; // number of rows
+    int num_columns = 0; // number of columns
+    int column_types[256]; // 0 for int, 1 for float
+    char* column_names[256]; // column names
+    int column_count = 0; // column count
+    int is_first_line = 1; // check if it is the first line
+    char* token; // token
+    int col_index; // column index for data lines
+    cJSON* metadata; // JSON metadata object
+    cJSON* groups; // JSON groups array
+    cJSON* group; // JSON group object
+    cJSON* columns; // JSON columns array
+    cJSON* column; // JSON column object
+    char* printed_metadata; // printed metadata string
+    char* metadata_str; // metadata string
+    int metadata_size; // metadata size
+    
+    
     // Open data.csv file
     pIn = fopen(csv_file_path, "r");
     if (pIn == NULL) {
@@ -36,18 +55,11 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
         return;
     }
 
-    char inputline[256]; // user buffer
-    int num_rows = 0; // number of rows
-    int num_columns = 0; // number of columns
-    int column_types[256]; // 0 for int, 1 for float
-    char* column_names[256]; // column names
-    int column_count = 0; // column count
-    int is_first_line = 1; // check if it is the first line
     //reading each line of the file
     while (fgets(inputline, sizeof(inputline), pIn) != NULL) {
         if (is_first_line) {
             // Parse header line
-            char* token = strtok(inputline, ",\n");
+            token = strtok(inputline, ",\n");
             while (token != NULL) {
                 column_names[column_count] = strdup(token); //keep column names
                 printf("Header - Column %d: %s\n", column_count, column_names[column_count]);
@@ -59,8 +71,8 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
         } else {
             // Parse data lines
             num_rows++;
-            char* token = strtok(inputline, ",\n");
-            int col_index = 0;
+            token = strtok(inputline, ",\n");
+            col_index = 0;
             while (token != NULL) {
                 if (strchr(token, '.') != NULL) {
                     column_types[col_index] = 1; // float
@@ -76,16 +88,16 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
     }
 
     // Create metadata using cJSON
-    cJSON* metadata = cJSON_CreateObject();
+    metadata = cJSON_CreateObject();
     cJSON_AddNumberToObject(metadata, "num_rows", num_rows); // Add number of rows
     cJSON_AddNumberToObject(metadata, "num_groups", 1); // Add number of groups
-    cJSON* groups = cJSON_AddArrayToObject(metadata, "groups"); // Add groups array
-    cJSON* group = cJSON_CreateObject();  // Create group object
+    groups = cJSON_AddArrayToObject(metadata, "groups"); // Add groups array
+    group = cJSON_CreateObject();  // Create group object
     cJSON_AddNumberToObject(group, "num_columns", num_columns); // Add number of columns
     cJSON_AddNumberToObject(group, "offset", 0); // Add offset
-    cJSON* columns = cJSON_AddArrayToObject(group, "columns");
+    columns = cJSON_AddArrayToObject(group, "columns");
     for (int i = 0; i < num_columns; i++) {  // Add columns array for each group
-        cJSON* column = cJSON_CreateObject();
+        column = cJSON_CreateObject();
         cJSON_AddStringToObject(column, "column_name", column_names[i]);    // Add column name
         cJSON_AddStringToObject(column, "column_type", column_types[i] == 0 ? "int" : "float"); // Add column type
         cJSON_AddItemToArray(columns, column);
@@ -100,7 +112,7 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
             is_first_line = 0;
             continue;
         }
-        char* token = strtok(inputline, ",");
+        token = strtok(inputline, ",");
         for (int i = 0; i < num_columns && token != NULL; i++) {
             if (column_types[i] == 1) { // float
                 float value = strtof(token, NULL);
@@ -114,13 +126,13 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
     }
 
     // Print the metadata
-    char* printed_metadata = cJSON_Print(metadata);
+    printed_metadata = cJSON_Print(metadata);
     printf("Metadata:\n%s\n", printed_metadata);
     free(printed_metadata);
 
     // Write metadata to data.hty
-    char* metadata_str = cJSON_PrintUnformatted(metadata);
-    int metadata_size = strlen(metadata_str);
+    metadata_str = cJSON_PrintUnformatted(metadata);
+    metadata_size = strlen(metadata_str);
     fwrite(metadata_str, sizeof(char), metadata_size, pOut);
     fwrite(&metadata_size, sizeof(int), 1, pOut);
 
