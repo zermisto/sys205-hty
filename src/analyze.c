@@ -459,6 +459,157 @@ void display_result_set(cJSON* metadata, char** column_names, int num_columns, i
     free(column_types);
 }
 
+/**
+ * @brief Function to project and filter data
+ * 
+ * @param metadata - metadata object
+ * @param hty_file_path - path to hty file
+ * @param projected_columns - array of column names to project
+ * @param num_columns - number of columns to project
+ * @param filtered_column - column to filter
+ * @param op - operation to perform
+ * @param value - value to filter
+ * @param row_count - pointer to store number of rows
+ * @return int** - 2D array of projected data
+ */
+/**
+ * @brief Function to project columns with filtering
+ * 
+ * @param metadata - metadata object
+ * @param hty_file_path - path to hty file
+ * @param projected_columns - array of column names to project
+ * @param num_columns - number of columns to project
+ * @param filtered_column - column to apply filter on
+ * @param op - operation for filtering
+ * @param value - value to filter against
+ * @param row_count - pointer to store number of resulting rows
+ * @return int** - 2D array of filtered and projected data
+ */
+int** project_and_filter(cJSON* metadata, const char* hty_file_path, char** projected_columns, 
+                        int num_columns, const char* filtered_column, int op, int value, int* row_count) {
+    // Get basic metadata info
+    cJSON* groups = cJSON_GetObjectItemCaseSensitive(metadata, "groups");
+    cJSON* group = cJSON_GetArrayItem(groups, 0);
+    cJSON* columns = cJSON_GetObjectItemCaseSensitive(group, "columns");
+    int total_rows = cJSON_GetObjectItemCaseSensitive(metadata, "num_rows")->valueint;
+    int offset = cJSON_GetObjectItemCaseSensitive(group, "offset")->valueint;
+    int total_columns = cJSON_GetArraySize(columns);
+    
+    // Find filter column index and type
+    int filter_column_index = -1;
+    int filter_column_type = -1;  // 0 for int, 1 for float
+    int col_idx = 0;
+    cJSON* column;
+    cJSON_ArrayForEach(column, columns) {
+        if (strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_name")->valuestring, 
+                  filtered_column) == 0) {
+            filter_column_index = col_idx;
+            filter_column_type = strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_type")->valuestring, 
+                                      "float") == 0 ? 1 : 0;
+            break;
+        }
+        col_idx++;
+    }
+    if (filter_column_index == -1) {
+        fprintf(stderr, "Filter column not found: %s\n", filtered_column);
+        return NULL;
+    }
+    
+    // Find indices and types for projected columns
+    int* column_indices = (int*)malloc(num_columns * sizeof(int));
+    int* column_types = (int*)malloc(num_columns * sizeof(int));
+    
+    for (int i = 0; i < num_columns; i++) {
+        column_indices[i] = -1;
+        col_idx = 0;
+        cJSON_ArrayForEach(column, columns) {
+            if (strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_name")->valuestring, 
+                      projected_columns[i]) == 0) {
+                column_indices[i] = col_idx;
+                column_types[i] = strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_type")->valuestring, 
+                                       "float") == 0 ? 1 : 0;
+                break;
+            }
+            col_idx++;
+        }
+        if (column_indices[i] == -1) {
+            fprintf(stderr, "Projected column not found: %s\n", projected_columns[i]);
+            free(column_indices);
+            free(column_types);
+            return NULL;
+        }
+    }
+    
+    // Open file
+    FILE* file = fopen(hty_file_path, "rb");
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file: %s\n", hty_file_path);
+        free(column_indices);
+        free(column_types);
+        return NULL;
+    }
+    
+    // First pass: count matching rows
+    int matching_rows = 0;
+    int* matching_indices = (int*)malloc(total_rows * sizeof(int));
+    
+    for (int row = 0; row < total_rows; row++) {
+        // Read filter column value
+        fseek(file, offset + (row * total_columns * sizeof(int)) + 
+              (filter_column_index * sizeof(int)), SEEK_SET);
+        
+        int current_value;
+        if (filter_column_type == 0) {  // int
+            fread(&current_value, sizeof(int), 1, file);
+        } else {  // float
+            float temp;
+            fread(&temp, sizeof(float), 1, file);
+            current_value = *(int*)&temp;
+        }
+        
+        // Check if row matches filter condition
+        if (compare_values(current_value, value, op, filter_column_type)) {
+            matching_indices[matching_rows] = row;
+            matching_rows++;
+        }
+    }
+    
+    // Allocate result array
+    int** result = NULL;
+    if (matching_rows > 0) {
+        result = (int**)malloc(num_columns * sizeof(int*));
+        for (int i = 0; i < num_columns; i++) {
+            result[i] = (int*)malloc(matching_rows * sizeof(int));
+        }
+        
+        // Read matching rows for each projected column
+        for (int i = 0; i < num_columns; i++) {
+            for (int j = 0; j < matching_rows; j++) {
+                fseek(file, offset + (matching_indices[j] * total_columns * sizeof(int)) + 
+                      (column_indices[i] * sizeof(int)), SEEK_SET);
+                
+                if (column_types[i] == 0) {  // int
+                    fread(&result[i][j], sizeof(int), 1, file);
+                } else {  // float
+                    float temp;
+                    fread(&temp, sizeof(float), 1, file);
+                    result[i][j] = *(int*)&temp;
+                }
+            }
+        }
+    }
+    
+    *row_count = matching_rows;
+    
+    // Cleanup
+    fclose(file);
+    free(matching_indices);
+    free(column_indices);
+    free(column_types);
+    
+    return result;
+}
+
 int main() {
     char inputline[256]; // user buffer
     char hty_file_path[256] = "data.hty"; // hty file path
@@ -494,9 +645,9 @@ int main() {
 
     // ** Task 4: Filter on a single column (operation and value)
     printf("\n--- Filter Column Data ---\n");
-    int operation;
-    int value_as_int;
-    float value_as_float;
+    int operation = 0;
+    int value_as_int = 0;
+    float value_as_float = 0.0;
 
     // Get column name
     printf("Please enter the column name: ");
@@ -560,7 +711,7 @@ int main() {
 
     // ** Task 5: Project multiple columns
     printf("\n--- Project Multiple Columns ---\n");
-    int num_columns;
+    int num_columns = 0;
     char** projected_columns;
     int** result_set;
     // int size;
@@ -588,6 +739,66 @@ int main() {
             free(projected_columns[i]);
         }
         free(result_set);
+        free(projected_columns);
+    }
+
+    // ** Task 6: Project and filter
+    printf("\n--- Filter based on a column from the same group ---\n");
+
+    char filtered_column[256];
+    // int operation;
+    // int value_as_int;
+    // float value_as_float;
+
+    // Get filter column name
+    printf("Enter filter column name: ");
+    fgets(inputline, sizeof(inputline), stdin);
+    sscanf(inputline, "%s", filtered_column);
+
+    // Get operation
+    printf("Choose operation (1-6): ");
+    fgets(inputline, sizeof(inputline), stdin);
+    sscanf(inputline, "%d", &operation);
+
+    // Get filter value (assuming float for this example)
+    printf("Enter filter value: ");
+    fgets(inputline, sizeof(inputline), stdin);
+    sscanf(inputline, "%f", &value_as_float);
+    value_as_int = *(int*)&value_as_float;
+
+    // Get number and names of columns to project
+    printf("Enter number of columns to project: ");
+    fgets(inputline, sizeof(inputline), stdin);
+    sscanf(inputline, "%d", &num_columns);
+    printf("eror start here?\n");
+
+    // char** projected_columns = (char**)malloc(num_columns * sizeof(char*));
+    for (int i = 0; i < num_columns; i++) {
+        projected_columns[i] = (char*)malloc(256);
+        printf("Enter column name %d: ", i + 1);
+        fgets(inputline, sizeof(inputline), stdin);
+        sscanf(inputline, "%s", projected_columns[i]);
+    }
+    printf("eror end here?\n");
+
+
+    // Project and filter
+    int filtered_row_count;
+    int** filtered_result = project_and_filter(metadata, hty_file_path, projected_columns, 
+                                            num_columns, filtered_column, operation, 
+                                            value_as_int, &filtered_row_count);
+
+    // Display results
+    if (filtered_result != NULL) {
+        display_result_set(metadata, projected_columns, num_columns, 
+                        filtered_result, filtered_row_count);
+        
+        // Cleanup
+        for (int i = 0; i < num_columns; i++) {
+            free(filtered_result[i]);
+            free(projected_columns[i]);
+        }
+        free(filtered_result);
         free(projected_columns);
     }
 
