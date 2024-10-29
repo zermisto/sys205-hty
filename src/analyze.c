@@ -1,9 +1,23 @@
+/**
+ * @file analyze.c
+ * @author Panupong Dangkajitpetch (King)
+ * @brief HeartyHTY file operations
+ * @version 0.1
+ * @date 2024-10-14
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../third_party/cJSON/cJSON.h"
 #include "heartyhty_functions.h" // Include heartyhty_functions.h
 
+/**
+ * @brief Print the menu
+ * 
+ */
 void print_menu() {
     printf("\n=== HTY File Operations Menu ===\n");
     printf("1. Extract and Display Metadata\n");
@@ -16,6 +30,10 @@ void print_menu() {
     printf("Enter your choice (0-5): ");
 }
 
+/**
+ * @brief Print the operation menu
+ * 
+ */
 void print_operation() {
     printf("\nChoose operation:\n");
     printf("1. Greater than (>)\n");
@@ -28,38 +46,36 @@ void print_operation() {
 }
 
 int main() {
-    char inputline[256];
-    char hty_file_path[256];
-    cJSON* metadata = NULL;
-    int choice;
+    char inputline[256]; // User input buffer
+    char hty_file_path[256]; // HTY file path
+    int choice; // User choice
     
     // Get HTY file path at start
     printf("Please enter the .hty file path: ");
     fgets(inputline, sizeof(inputline), stdin);
     sscanf(inputline, "%s", hty_file_path);
     
-    // Extract metadata once at the beginning
-    metadata = extract_metadata(hty_file_path);
-    if (metadata == NULL) {
-        fprintf(stderr, "Error extracting metadata. Exiting.\n");
-        return 1;
-    }
-
     do {
         print_menu();
         fgets(inputline, sizeof(inputline), stdin);
-        sscanf(inputline, "%d", &choice);
+        sscanf(inputline, "%d", &choice); // get user choice
 
         switch(choice) {
-            case 1: { // Extract and Display Metadata
+            case 1: { // Task 2: Extract and Display Metadata
                 printf("\n=== Metadata ===\n");
+                // Extract metadata once at the beginning
+                cJSON* metadata = NULL; // Metadata object
+                metadata = extract_metadata(hty_file_path);
+                if (metadata == NULL) {
+                    fprintf(stderr, "Error extracting metadata. Exiting.\n");
+                    return 1;
+                }
                 char* printed_metadata = cJSON_Print(metadata);
                 printf("%s\n", printed_metadata);
                 free(printed_metadata);
                 break;
             }
-            
-            case 2: { // Project Single Column
+            case 2: { // Task 3.1: Project Single Column
                 printf("\n=== Project Single Column ===\n");
                 char column_name[256];
                 int size;
@@ -70,13 +86,13 @@ int main() {
                 
                 int* column_data = project_single_column(metadata, hty_file_path, column_name, &size);
                 if (column_data != NULL) {
-                    display_column(metadata, column_name, column_data, size);
+                    display_column(metadata, column_name, column_data, size); // Task 3.2: Display Column
                     free(column_data);
                 }
                 break;
             }
             
-            case 3: { // Filter Single Column
+            case 3: { // Task 4: Filter Single Column
                 printf("\n=== Filter Single Column ===\n");
                 char column_name[256];
                 int operation, size;
@@ -128,7 +144,7 @@ int main() {
                 break;
             }
             
-            case 4: { // Project Multiple Columns
+            case 4: { // Task 5: Project Multiple Columns
                 printf("\n=== Project Multiple Columns ===\n");
                 int num_columns, size;
                 char** projected_columns;
@@ -147,7 +163,7 @@ int main() {
                 
                 int** result_set = project(metadata, hty_file_path, projected_columns, num_columns, &size);
                 if (result_set != NULL) {
-                    display_result_set(metadata, projected_columns, num_columns, result_set, size);
+                    display_result_set(metadata, projected_columns, num_columns, result_set, size); // Task 5.2 Display multiple columns
                     for (int i = 0; i < num_columns; i++) {
                         free(result_set[i]);
                         free(projected_columns[i]);
@@ -158,7 +174,7 @@ int main() {
                 break;
             }
             
-            case 5: { // Project and Filter Columns
+            case 5: { // Task 6: Project and Filter Columns
                 printf("\n=== Project and Filter Columns ===\n");
                 char filtered_column[256];
                 int operation, num_columns, filtered_row_count;
@@ -191,8 +207,6 @@ int main() {
                     }
                 }
 
-    
-                
                 print_operation();
                 fgets(inputline, sizeof(inputline), stdin);
                 sscanf(inputline, "%d", &operation);
@@ -237,9 +251,9 @@ int main() {
                 }
                 break;
             }
-            case 6: {
+            case 6: { // Task 7: Add Row
+                printf("\n=== Add Row ===\n");
                 int num_rows;
-                
                 printf("Enter the number of rows to add: ");
                 if (scanf("%d", &num_rows) != 1 || num_rows <= 0) {
                     printf("Invalid input. Please enter a positive number.\n");
@@ -249,23 +263,8 @@ int main() {
                 
                 // Get number of columns from metadata
                 cJSON* groups = cJSON_GetObjectItemCaseSensitive(metadata, "groups");
-                if (!groups) {
-                    printf("Error: Invalid metadata structure (groups not found)\n");
-                    break;
-                }
-                
                 cJSON* group = cJSON_GetArrayItem(groups, 0);
-                if (!group) {
-                    printf("Error: Invalid metadata structure (first group not found)\n");
-                    break;
-                }
-                
                 cJSON* columns = cJSON_GetObjectItemCaseSensitive(group, "columns");
-                if (!columns) {
-                    printf("Error: Invalid metadata structure (columns not found)\n");
-                    break;
-                }
-                
                 int num_columns = cJSON_GetArraySize(columns);
                 if (num_columns <= 0) {
                     printf("Error: No columns found in metadata\n");

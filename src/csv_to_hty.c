@@ -8,10 +8,10 @@
  * @copyright Copyright (c) 2024
  * 
  */
-#include "../third_party/cJSON/cJSON.h" // Include cJSON library
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../third_party/cJSON/cJSON.h" // Include cJSON library
 
 /**
  * @brief Convert CSV file to HTY file
@@ -39,7 +39,6 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
     char* printed_metadata; // printed metadata string
     char* metadata_str; // metadata string
     int metadata_size; // metadata size
-    
     
     // Open data.csv file
     pIn = fopen(csv_file_path, "r");
@@ -149,8 +148,8 @@ void convert_from_csv_to_hty(FILE* pIn, FILE* pOut, char* csv_file_path, char* h
 int main() {
     FILE* pIn = NULL; // input file pointer
     FILE* pOut = NULL; // output file pointer
-    char csv_file_path[256] = "data.csv"; // csv file path
-    char hty_file_path[256] = "data.hty"; // hty file path
+    char csv_file_path[256]; // csv file path
+    char hty_file_path[256]; // hty file path
     char inputline[256]; // user buffer
 
     printf("Please enter the .csv file path: ");

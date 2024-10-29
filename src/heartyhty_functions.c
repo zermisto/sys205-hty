@@ -1,9 +1,19 @@
+/**
+ * @file heartyhty_functions.c
+ * @author Panupong Dangkajitpetch (King)
+ * @brief Functions for HeartyHTY
+ * @version 0.1
+ * @date 2024-10-14
+ * 
+ * @copyright Copyright (c) 2024
+ * 
+ */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "../third_party/cJSON/cJSON.h"
 
-//Task 4 Filter a single column
+// For task 4 Filter a single column
 #define OP_GREATER 1 // >
 #define OP_GREATER_EQUAL 2 // >=
 #define OP_LESS 3 // <
@@ -46,11 +56,6 @@ cJSON* extract_metadata(const char* hty_file_path) {
 
     return metadata;
 }
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include "../third_party/cJSON/cJSON.h"
 
 int* project_single_column(cJSON* metadata, const char* hty_file_path, const char* projected_column, int* size) {
     // Find the column in metadata
@@ -386,130 +391,6 @@ void display_result_set(cJSON* metadata, char** column_names, int num_columns, i
     free(column_types);
 }
 
-// int** project_and_filter(cJSON* metadata, const char* hty_file_path, char** projected_columns, 
-//                         int num_columns, const char* filtered_column, int op, int value, int* row_count) {
-//     // Get basic metadata info
-//     cJSON* groups = cJSON_GetObjectItemCaseSensitive(metadata, "groups");
-//     cJSON* group = cJSON_GetArrayItem(groups, 0);
-//     cJSON* columns = cJSON_GetObjectItemCaseSensitive(group, "columns");
-//     int total_rows = cJSON_GetObjectItemCaseSensitive(metadata, "num_rows")->valueint;
-//     int offset = cJSON_GetObjectItemCaseSensitive(group, "offset")->valueint;
-//     int total_columns = cJSON_GetArraySize(columns);
-    
-//     // Find filter column index and type
-//     int filter_column_index = -1;
-//     int filter_column_type = -1;  // 0 for int, 1 for float
-//     int col_idx = 0;
-//     cJSON* column;
-//     cJSON_ArrayForEach(column, columns) {
-//         if (strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_name")->valuestring, 
-//                   filtered_column) == 0) {
-//             filter_column_index = col_idx;
-//             filter_column_type = strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_type")->valuestring, 
-//                                       "float") == 0 ? 1 : 0;
-//             break;
-//         }
-//         col_idx++;
-//     }
-//     if (filter_column_index == -1) {
-//         fprintf(stderr, "Filter column not found: %s\n", filtered_column);
-//         return NULL;
-//     }
-    
-//     // Find indices and types for projected columns
-//     int* column_indices = (int*)malloc(num_columns * sizeof(int));
-//     int* column_types = (int*)malloc(num_columns * sizeof(int));
-    
-//     for (int i = 0; i < num_columns; i++) {
-//         column_indices[i] = -1;
-//         col_idx = 0;
-//         cJSON_ArrayForEach(column, columns) {
-//             if (strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_name")->valuestring, 
-//                       projected_columns[i]) == 0) {
-//                 column_indices[i] = col_idx;
-//                 column_types[i] = strcmp(cJSON_GetObjectItemCaseSensitive(column, "column_type")->valuestring, 
-//                                        "float") == 0 ? 1 : 0;
-//                 break;
-//             }
-//             col_idx++;
-//         }
-//         if (column_indices[i] == -1) {
-//             fprintf(stderr, "Projected column not found: %s\n", projected_columns[i]);
-//             free(column_indices);
-//             free(column_types);
-//             return NULL;
-//         }
-//     }
-    
-//     // Open file
-//     FILE* file = fopen(hty_file_path, "rb");
-//     if (file == NULL) {
-//         fprintf(stderr, "Error opening file: %s\n", hty_file_path);
-//         free(column_indices);
-//         free(column_types);
-//         return NULL;
-//     }
-    
-//     // First pass: count matching rows
-//     int matching_rows = 0;
-//     int* matching_indices = (int*)malloc(total_rows * sizeof(int));
-    
-//     for (int row = 0; row < total_rows; row++) {
-//         // Read filter column value
-//         fseek(file, offset + (row * total_columns * sizeof(int)) + 
-//               (filter_column_index * sizeof(int)), SEEK_SET);
-        
-//         int current_value;
-//         if (filter_column_type == 0) {  // int
-//             fread(&current_value, sizeof(int), 1, file);
-//         } else {  // float
-//             float temp;
-//             fread(&temp, sizeof(float), 1, file);
-//             current_value = *(int*)&temp;
-//         }
-        
-//         // Check if row matches filter condition
-//         if (compare_values(current_value, value, op, filter_column_type)) {
-//             matching_indices[matching_rows] = row;
-//             matching_rows++;
-//         }
-//     }
-    
-//     // Allocate result array
-//     int** result = NULL;
-//     if (matching_rows > 0) {
-//         result = (int**)malloc(num_columns * sizeof(int*));
-//         for (int i = 0; i < num_columns; i++) {
-//             result[i] = (int*)malloc(matching_rows * sizeof(int));
-//         }
-        
-//         // Read matching rows for each projected column
-//         for (int i = 0; i < num_columns; i++) {
-//             for (int j = 0; j < matching_rows; j++) {
-//                 fseek(file, offset + (matching_indices[j] * total_columns * sizeof(int)) + 
-//                       (column_indices[i] * sizeof(int)), SEEK_SET);
-                
-//                 if (column_types[i] == 0) {  // int
-//                     fread(&result[i][j], sizeof(int), 1, file);
-//                 } else {  // float
-//                     float temp;
-//                     fread(&temp, sizeof(float), 1, file);
-//                     result[i][j] = *(int*)&temp;
-//                 }
-//             }
-//         }
-//     }
-    
-//     *row_count = matching_rows;
-    
-//     // Cleanup
-//     fclose(file);
-//     free(matching_indices);
-//     free(column_indices);
-//     free(column_types);
-    
-//     return result;
-// }
 int** project_and_filter(cJSON* metadata, const char* hty_file_path, char** projected_columns, 
                         int num_columns, const char* filtered_column, int op, int value, int* row_count) {
     // Get basic metadata info
@@ -742,4 +623,3 @@ void add_row(cJSON* metadata, const char* hty_file_path, const char* modified_ht
     fclose(source_file);
     fclose(dest_file);
 }
- 
