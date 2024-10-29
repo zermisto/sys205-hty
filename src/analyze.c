@@ -49,7 +49,8 @@ int main() {
     char inputline[256]; // User input buffer
     char hty_file_path[256]; // HTY file path
     int choice; // User choice
-    
+    cJSON* metadata = NULL; // Metadata object
+
     // Get HTY file path at start
     printf("Please enter the .hty file path: ");
     fgets(inputline, sizeof(inputline), stdin);
@@ -64,12 +65,13 @@ int main() {
             case 1: { // Task 2: Extract and Display Metadata
                 printf("\n=== Metadata ===\n");
                 // Extract metadata once at the beginning
-                cJSON* metadata = NULL; // Metadata object
+
                 metadata = extract_metadata(hty_file_path);
                 if (metadata == NULL) {
                     fprintf(stderr, "Error extracting metadata. Exiting.\n");
                     return 1;
                 }
+                printf("Successfully extracted metadata!\n");
                 char* printed_metadata = cJSON_Print(metadata);
                 printf("%s\n", printed_metadata);
                 free(printed_metadata);
