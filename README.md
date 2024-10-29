@@ -1,6 +1,18 @@
 # SYS-205 Assessment 3 - The hearty file format (`.hty`)
 You will be writing several programs to process the `.hty` file format, an application-specific file format for data analytics.
 
+## Note
+I am writing this implementation in C and using cJSON library for c which is in third_party/cJSON/.
+
+* csv_to_hty.c - to convert data.csv file to .hty format
+* analyze.c - HeartyHTY file operations
+* heartyhty_functions.c - Functions for HeartyHTY (this contains Task1)
+* heartyhty_functions.h - header file for HeartyHTY functions (this contains Task 2 to Task 7)
+
+To run the bash files:
+* convert_csv_to_hty.sh - compiles analyze.c and runs it 
+* analyze.sh - compiles analyze.c with heartyhty_functions.c and runs it 
+
 ## Acknowledgement
 *This assessment is inspired from a part of [Project 1](https://15721.courses.cs.cmu.edu/spring2023/project1.html) of the CMU 15-721 Advanced Database System (Fall 23) course.*
 
